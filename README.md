@@ -122,4 +122,42 @@ python Y2/example_usage.py
 ```
 
 此腳本會模擬預測 `DeSOx_2nd`，並根據結果即時反推出 `MLUT4_AT-240` 的值，最終產生 `Y2/usage_report_y2.html`。
+
+---
+
+## 開發者使用範例 (Usage Example for Developers)
+
+其他工程師可以輕易地將此線上學習器整合到自己的即時數據處理應用中。核心概念是 `OnlinePredictor` 物件會自己維護模型的狀態、資料緩衝區和誤差歷史。您只需要在迴圈中持續地餵給它新的特徵和舊的答案即可。
+
+以下是一個概念性的範例，以 Y1 流程為例：
+
+```python
+import pandas as pd
+from Y1.inference import OnlinePredictor
+# from Y2.inference import OnlinePredictor # 若要使用 Y2 流程，請改用此行
+
+# 1. 在您的應用程式啟動時，初始化預測器一次
+predictor = OnlinePredictor()
+last_true_target = None
+
+# 2. 進入您的即時數據處理主迴圈 (例如，每5分鐘執行一次)
+while True:
+    # 3. 從您的數據源獲取當前特徵 (格式需為單行的 pandas DataFrame)
+    #    注意：欄位名稱必須與 features1.pkl (或 features2.pkl) 一致
+    current_features_df = get_latest_sensor_data()
+
+    # 4. 呼叫 predict_and_learn 進行預測與學習
+    #    - current_features_df: 當前的特徵
+    #    - last_true_target: **上一個時間點**的真實答案 (第一次為 None)
+    prediction = predictor.predict_and_learn(current_features_df, last_true_target)
+
+    # 拿到預測值後，就可以進行後續應用...
+    print(f"最新的預測結果為: {prediction}")
+
+    # 5. 在下一次迴圈開始前，想辦法拿到上一個時間點的真實值
+    #    (這通常會有延遲，例如需等待化驗結果)
+    last_true_target = get_ground_truth_for_previous_step()
+```
+
+在上面的範例中，`get_latest_sensor_data()` 和 `get_ground_truth_for_previous_step()` 是您需要根據自身系統實現的函式，前者用來抓取即時工場數據，後者用來取得對應的真實結果。
 '''
