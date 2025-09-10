@@ -36,6 +36,8 @@ venv.bak/
 
 # Data files
 *.feather
+*.csv
+*.json
 
 # IDE / Editor specific
 .vscode/
