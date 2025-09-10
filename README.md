@@ -93,13 +93,16 @@ python Y1/train.py
 
 #### 階段二：Y1 線上學習與預測
 
-`Y1/example_usage.py` 檔案是一個完整的模擬範例。
+'''`Y1/example_usage.py` 檔案是一個完整的模擬範例。
 
 ```bash
 python Y1/example_usage.py
 ```
 
-此腳本會模擬即時數據的智慧循環，並在結束後產生 `Y1/usage_report.html`。
+此腳本會模擬即時數據的智慧循環，並在結束後產生 `Y1/usage_report.html`。報告範例如下圖所示：
+
+![線上學習報告範例](img/online_report.png)
+'''
 
 ### Y2 流程 (預測 DeSOx_2nd 並反推 Y3)
 
