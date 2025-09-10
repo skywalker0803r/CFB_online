@@ -116,7 +116,7 @@ python Y2/train.py
 
 此步驟會產生 `Y2/model/xgb_model_y2.json` 和 `Y2/training_report_y2.html`。
 
-#### 階段四：Y2/Y3 線上學習與預測
+'''#### 階段四：Y2/Y3 線上學習與預測
 
 `Y2/example_usage.py` 是一個模擬 Y2/Y3 流程的範例。
 
@@ -124,7 +124,12 @@ python Y2/train.py
 python Y2/example_usage.py
 ```
 
-此腳本會模擬預測 `DeSOx_2nd`，並根據結果即時反推出 `MLUT4_AT-240` 的值，最終產生 `Y2/usage_report_y2.html`。
+此腳本會模擬預測 `DeSOx_2nd`，並根據結果即時反推出 `MLUT4_AT-240` 的值，最終產生 `Y2/usage_report_y2.html`。報告中的 Y2 預測與 Y3 反推趨勢範例如下圖：
+
+![Y2 報告範例](img/online_report_y2.png)
+
+![Y3 報告範例](img/online_report_y3.png)
+'''
 
 ---
 
