@@ -31,9 +31,18 @@
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
+├── config.py                     # 系統配置管理
+├── integration_bridge.py         # 業主系統整合橋接器
+├── test_integration.py           # 整合測試腳本
+├── INTEGRATION_GUIDE.md          # 詳細整合指南
+├── TEST0911/                     # 業主 PI Server 代碼
+│   ├── __init__.py
+│   ├── TEST0911.ipynb            # 業主原始 Jupyter notebook
+│   └── crawl_pi_server.py        # PI Server 數據收集模組 (需業主提供)
 ├── Y1/                           # 主要流程：預測 DeSOx_1st
 │   ├── model/
 │   │   └── xgb_model.json
+│   ├── analyze_skew.py           # 訓練/服務分佈歪斜分析
 │   ├── example_usage.py          # Y1 線上學習與預測的模擬範例
 │   ├── features1.pkl             # Y1 模型使用的特徵列表
 │   ├── inference.py              # Y1 核心推論與線上學習邏輯
@@ -77,7 +86,41 @@
 
 ## 使用流程
 
-本專案的使用分為兩個獨立的流程：
+本專案支援三種使用模式：**獨立模擬模式**、**業主整合模式**，以及**傳統批次模式**。
+
+### 🏭 業主整合模式 (推薦生產使用)
+
+此模式整合業主的 PI Server 即時數據收集系統，實現真正的工業級線上學習。
+
+#### 前置準備
+
+1. **整合測試**
+   ```bash
+   python test_integration.py
+   ```
+
+2. **系統配置** (可選)
+   ```bash
+   # 編輯 config.py 調整系統參數
+   python config.py  # 驗證配置
+   ```
+
+#### 使用方式
+
+```bash
+python integration_bridge.py
+```
+
+選擇運行模式：
+- **選項 1**: 收集歷史數據並重新訓練模型
+- **選項 2**: 執行即時預測迴圈 (生產模式)
+- **選項 3**: 單次預測測試
+
+詳細說明請參考 `INTEGRATION_GUIDE.md`。
+
+### 📊 獨立模擬模式
+
+本專案原始的使用分為兩個獨立的流程：
 
 ### Y1 流程 (預測 DeSOx_1st)
 
@@ -135,6 +178,26 @@ python Y2/example_usage.py
 
 ## 開發者使用範例 (Usage Example for Developers)
 
+### 🏭 業主整合模式 (推薦)
+
+對於有 PI Server 系統的工業環境，建議使用整合橋接器：
+
+```python
+from integration_bridge import CFBIntegrationBridge
+
+# 1. 初始化整合橋接器 (CFB1 或 CFB2)
+bridge = CFBIntegrationBridge(cfb_unit=2)
+
+# 2. 收集即時數據並執行預測
+current_data = bridge.collect_pi_data(realtime=True)
+predictions = bridge.run_online_prediction(current_data)
+
+# 3. 執行持續的即時預測迴圈
+bridge.run_realtime_loop(loop_interval=300)  # 每5分鐘
+```
+
+### 📊 獨立集成模式
+
 其他工程師可以輕易地將此線上學習器整合到自己的即時數據處理應用中。核心概念是 `OnlinePredictor` 物件會自己維護模型的狀態、資料緩衝區和誤差歷史。您只需要在迴圈中持續地餵給它新的特徵和舊的答案即可。
 
 以下是一個概念性的範例，以 Y1 流程為例：
@@ -165,6 +228,19 @@ while True:
     # 5. 在下一次迴圈開始前，想辦法拿到上一個時間點的真實值
     #    (這通常會有延遲，例如需等待化驗結果)
     last_true_target = get_ground_truth_for_previous_step()
+```
+
+### 🔧 客製化配置
+
+系統所有參數都可透過 `config.py` 進行調整：
+
+```python
+from config import SystemConfig
+
+# 修改配置
+config = SystemConfig()
+config.REALTIME_CONFIG['prediction_interval'] = 600  # 改為10分鐘
+config.PI_SERVER_CONFIG['history_days'] = 30        # 改為30天歷史數據
 ```
 
 在上面的範例中，`get_latest_sensor_data()` 和 `get_ground_truth_for_previous_step()` 是您需要根據自身系統實現的函式，前者用來抓取即時工場數據，後者用來取得對應的真實結果。
