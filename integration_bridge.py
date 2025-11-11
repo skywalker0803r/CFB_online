@@ -218,7 +218,7 @@ class CFBIntegrationBridge:
             df['DeSOx_1st'] = (df['前爐SOx濃度'] - df[eco_sox]) / df['前爐SOx濃度']
             df['DeSOx_2nd'] = (df[eco_sox] - df[stack_sox]) / df[eco_sox]
         
-        return df.dropna()
+        return df
     
     def _generate_mock_data(self):
         """生成模擬數據（當 PI Server 不可用時）"""
