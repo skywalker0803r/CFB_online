@@ -137,7 +137,32 @@ class CFBIntegrationBridge:
             if realtime:
                 # 即時模式：獲取最新的單筆數據
                 print("📡 從 PI Server 收集即時數據...")
-                data = get_tag_snapshot(list(self.tag_dict.keys()))
+                snapshot_data = {}
+                for tag in self.tag_dict.keys():
+                    # 假設 get_tag_snapshot 返回一個包含單個值或(值, 時間戳)元組的結果
+                    # 我們只取值的部分，並將其放入列表中以創建 DataFrame
+                    try:
+                        # 由於不確定返回格式，我們做一個靈活的處理
+                        result = get_tag_snapshot(tag)
+                        if isinstance(result, (dict,)):
+                            # 如果返回字典，取第一個值
+                            value = next(iter(result.values()), None)
+                        elif isinstance(result, (list, tuple)):
+                            # 如果返回列表或元組，取第一個元素
+                            value = result[0] if result else None
+                        else:
+                            # 否則直接使用返回值
+                            value = result
+                        
+                        # PI SDK 可能返回帶有時間戳的 AFValue 對象，我們需要提取其值
+                        if hasattr(value, 'Value'):
+                            snapshot_data[tag] = [value.Value]
+                        else:
+                            snapshot_data[tag] = [value]
+                    except Exception as tag_error:
+                        print(f"⚠️ 讀取標籤 '{tag}' 失敗: {tag_error}")
+                        snapshot_data[tag] = [None]
+                data = snapshot_data
             else:
                 # 歷史模式：獲取指定時間範圍的數據
                 end_time = datetime.datetime.now()
