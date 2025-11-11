@@ -147,9 +147,9 @@ class CFBIntegrationBridge:
                         if isinstance(result, (dict,)):
                             # 如果返回字典，取第一個值
                             value = next(iter(result.values()), None)
-                        elif isinstance(result, (list, tuple)):
-                            # 如果返回列表或元組，取第一個元素
-                            value = result[0] if result else None
+                        elif isinstance(result, (list, tuple)) and len(result) > 2:
+                            # 如果返回列表或元組，取第三個元素 (數值)
+                            value = result[2]
                         else:
                             # 否則直接使用返回值
                             value = result
