@@ -101,6 +101,7 @@ class CFBIntegrationBridge:
     def _get_cfb2_tags(self):
         """取得 CFB2 的感測器標籤字典"""
         return {
+            # Original Tags
             'MLUT4_AIA792101A':'ECO O2_A #2',
             'MLUT4_AIA792101B':'ECO O2_B #2',
             'MLUT4_AIC-232B': 'ECO SOx #2',
@@ -116,7 +117,30 @@ class CFBIntegrationBridge:
             'MLUT4_FQ-239': '煙氣流量#2',
             'MLUT4_FT-232': 'GAH出口PA流量#2',
             'MLUT4_RQ-2BTLS': '石灰石#2',
-            # ... 可依需要添加更多標籤
+            
+            # Added from Y1 Error
+            'MLUT4_TE-252D': 'MLUT4_TE-252D',
+            'MLUT4_TE-252F': 'MLUT4_TE-252F',
+            'MLUT4_PIC-233': 'MLUT4_PIC-233',
+            'MLUT4_TE-252G': 'MLUT4_TE-252G',
+            'MLUT4_TE-252I': 'MLUT4_TE-252I',
+            'MLUT4_IT-E7925B': 'MLUT4_IT-E7925B',
+            'MLUT4_ZT-232': 'MLUT4_ZT-232',
+            'MLUT4_FT-792020': 'MLUT4_FT-792020',
+            'MLUT4_IT-E7925A': 'MLUT4_IT-E7925A',
+            'MLUT4_TE-251A': 'MLUT4_TE-251A',
+            'MLUT4_PDT-232': 'MLUT4_PDT-232',
+            'MLUT4_TE-251G': 'MLUT4_TE-251G',
+            'MLUT4_TE-251D': 'MLUT4_TE-251D',
+            'MLUT4_TE-251F': 'MLUT4_TE-251F',
+            'MLUT4_TE-251H': 'MLUT4_TE-251H',
+
+            # Added from Y2 Error
+            'MLUT4_FT-957': 'MLUT4_FT-957',
+            'MLUT4_FT-956': 'MLUT4_FT-956',
+            'MLUT4_RT-091': 'MLUT4_RT-091',
+            'MLUT4_PT-231': 'MLUT4_PT-231',
+            'MLUT4_FT-V004': 'MLUT4_FT-V004',
         }
     
     def collect_pi_data(self, realtime=True):
