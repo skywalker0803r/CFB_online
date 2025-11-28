@@ -292,15 +292,25 @@ class CFBIntegrationBridge:
         """執行線上預測"""
         results = {}
         
+        # 提取當前特徵數據
+        current_features = {}
+        if not current_data.empty:
+            # 記錄所有特徵值
+            for col in current_data.columns:
+                if col in current_data.columns:
+                    current_features[f'feature_{col}'] = current_data[col].iloc[-1] if len(current_data) > 0 else None
+        
         # Y1 預測 (DeSOx_1st)
         if self.predictor_y1:
             try:
                 y1_pred = self.predictor_y1.predict_and_learn(current_data, last_true_y1)
                 results['Y1_prediction'] = y1_pred
+                results['Y1_true'] = current_data.get('DeSOx_1st', pd.Series([None])).iloc[-1] if not current_data.empty else None
                 print(f"🎯 Y1 預測結果: {y1_pred:.4f}" if y1_pred else "⏳ Y1 模型尚未就緒")
             except Exception as e:
                 print(f"❌ Y1 預測失敗: {e}")
                 results['Y1_prediction'] = None
+                results['Y1_true'] = None
         
         # Y2 預測 (DeSOx_2nd) - 僅 CFB2
         if self.predictor_y2 and self.cfb_unit == 2:
@@ -308,17 +318,20 @@ class CFBIntegrationBridge:
                 y2_pred_dict = self.predictor_y2.predict_and_learn(current_data, last_true_y2)
                 results['Y2_prediction'] = y2_pred_dict['DeSOx_2nd_pred']
                 results['Y3_prediction'] = y2_pred_dict['Y3_pred']
+                results['Y2_true'] = current_data.get('DeSOx_2nd', pd.Series([None])).iloc[-1] if not current_data.empty else None
                 print(f"🎯 Y2 預測結果: {y2_pred_dict['DeSOx_2nd_pred']:.4f}" if y2_pred_dict['DeSOx_2nd_pred'] else "⏳ Y2 模型尚未就緒")
                 print(f"🎯 Y3 反推結果: {y2_pred_dict['Y3_pred']:.4f}" if y2_pred_dict['Y3_pred'] else "⏳ Y3 計算尚未就緒")
             except Exception as e:
                 print(f"❌ Y2/Y3 預測失敗: {e}")
                 results['Y2_prediction'] = None
                 results['Y3_prediction'] = None
+                results['Y2_true'] = None
         
-        # 記錄預測歷史
+        # 記錄完整的預測歷史（包含特徵、預測值、真實值）
         prediction_record = {
             'timestamp': datetime.datetime.now(),
             'cfb_unit': self.cfb_unit,
+            **current_features,  # 添加所有特徵數據
             **results
         }
         self.prediction_history.append(prediction_record)
@@ -378,13 +391,94 @@ class CFBIntegrationBridge:
         if self.predictor_y2:
             self.predictor_y2.generate_usage_report()
         
-        # 儲存預測歷史
+        # 準備完整的預測歷史數據
         history_df = pd.DataFrame(self.prediction_history)
+        
+        # 重新整理欄位順序，讓時間戳記和關鍵指標在前面
+        if not history_df.empty:
+            # 基本資訊欄位
+            basic_cols = ['timestamp', 'cfb_unit']
+            
+            # 預測和真實值欄位
+            prediction_cols = [col for col in history_df.columns if col.endswith('_prediction') or col.endswith('_true')]
+            
+            # 特徵欄位
+            feature_cols = [col for col in history_df.columns if col.startswith('feature_')]
+            
+            # 重新排列欄位順序
+            ordered_cols = basic_cols + prediction_cols + feature_cols
+            existing_cols = [col for col in ordered_cols if col in history_df.columns]
+            history_df = history_df[existing_cols]
+        
+        # 儲存完整的預測歷史（包含特徵、預測值、真實值）
         history_filename = f"CFB{self.cfb_unit}_integration_history_{datetime.date.today().strftime('%Y%m%d')}.csv"
         history_df.to_csv(history_filename, index=False)
-        print(f"📁 整合歷史已儲存至: {history_filename}")
+        print(f"📁 完整整合歷史已儲存至: {history_filename}")
+        print(f"   包含 {len(history_df)} 筆記錄，{len(history_df.columns)} 個欄位")
         
-        print("✅ 整合報告生成完成")
+        # 生成摘要統計
+        if len(history_df) > 0:
+            print(f"\n📈 預測摘要統計:")
+            
+            # Y1 統計
+            if 'Y1_prediction' in history_df.columns:
+                y1_pred = history_df['Y1_prediction'].dropna()
+                y1_true = history_df.get('Y1_true', pd.Series()).dropna()
+                
+                if len(y1_pred) > 0:
+                    print(f"   Y1 預測值範圍: {y1_pred.min():.4f} ~ {y1_pred.max():.4f}")
+                    print(f"   Y1 預測值平均: {y1_pred.mean():.4f}")
+                
+                if len(y1_true) > 0:
+                    print(f"   Y1 真實值範圍: {y1_true.min():.4f} ~ {y1_true.max():.4f}")
+                    print(f"   Y1 真實值平均: {y1_true.mean():.4f}")
+                    
+                    # 計算預測誤差（如果有足夠的配對數據）
+                    paired_data = history_df.dropna(subset=['Y1_prediction', 'Y1_true'])
+                    if len(paired_data) > 0:
+                        mae = abs(paired_data['Y1_prediction'] - paired_data['Y1_true']).mean()
+                        rmse = ((paired_data['Y1_prediction'] - paired_data['Y1_true'])**2).mean()**0.5
+                        print(f"   Y1 預測 MAE: {mae:.4f}, RMSE: {rmse:.4f}")
+            
+            # Y2 統計（僅CFB2）
+            if self.cfb_unit == 2 and 'Y2_prediction' in history_df.columns:
+                y2_pred = history_df['Y2_prediction'].dropna()
+                y2_true = history_df.get('Y2_true', pd.Series()).dropna()
+                
+                if len(y2_pred) > 0:
+                    print(f"   Y2 預測值範圍: {y2_pred.min():.4f} ~ {y2_pred.max():.4f}")
+                    print(f"   Y2 預測值平均: {y2_pred.mean():.4f}")
+                
+                if len(y2_true) > 0:
+                    print(f"   Y2 真實值範圍: {y2_true.min():.4f} ~ {y2_true.max():.4f}")
+                    print(f"   Y2 真實值平均: {y2_true.mean():.4f}")
+                    
+                    # 計算預測誤差
+                    paired_data = history_df.dropna(subset=['Y2_prediction', 'Y2_true'])
+                    if len(paired_data) > 0:
+                        mae = abs(paired_data['Y2_prediction'] - paired_data['Y2_true']).mean()
+                        rmse = ((paired_data['Y2_prediction'] - paired_data['Y2_true'])**2).mean()**0.5
+                        print(f"   Y2 預測 MAE: {mae:.4f}, RMSE: {rmse:.4f}")
+            
+            # 特徵統計摘要
+            feature_columns = [col for col in history_df.columns if col.startswith('feature_')]
+            if feature_columns:
+                print(f"\n🔧 特徵數據摘要 (共 {len(feature_columns)} 個特徵):")
+                for col in feature_columns[:5]:  # 只顯示前5個特徵
+                    feature_data = history_df[col].dropna()
+                    if len(feature_data) > 0:
+                        feature_name = col.replace('feature_', '')
+                        print(f"   {feature_name}: {feature_data.min():.2f} ~ {feature_data.max():.2f} (平均: {feature_data.mean():.2f})")
+                
+                if len(feature_columns) > 5:
+                    print(f"   ... 以及其他 {len(feature_columns)-5} 個特徵")
+        
+        print("\n✅ 整合報告生成完成")
+        print(f"💡 提示: 可使用以下程式碼分析完整數據:")
+        print(f"   import pandas as pd")
+        print(f"   df = pd.read_csv('{history_filename}')")
+        print(f"   print(df.describe())")
+        print(f"   print(df.columns.tolist())")
 
 
 def main():
