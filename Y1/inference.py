@@ -12,7 +12,12 @@ from sklearn.metrics import r2_score, mean_squared_error
 # --- 常數設定 ---
 MODEL_DIR = "model"
 MODEL_PATH = os.path.join(MODEL_DIR, "xgb_model.json")
-FEATURES_PATH = "features1.pkl"
+
+#FEATURES_PATH = "features1.pkl"
+# --- 路徑設定 (在 Y1/inference.py 內部) ---
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) # SCRIPT_DIR 會是 /專案根目錄/Y1
+# FEATURES_PATH = /專案根目錄/Y1/features1.pkl
+FEATURES_PATH = os.path.join(SCRIPT_DIR, "features1.pkl")
 
 # --- 輔助函式 (與 train.py 同步) ---
 def train_model(train_X, train_y, sample_weight=None):

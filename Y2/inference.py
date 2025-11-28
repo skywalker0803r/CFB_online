@@ -23,6 +23,11 @@ from sklearn.metrics import r2_score, mean_squared_error
 SCRIPT_DIR = "./"#os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(SCRIPT_DIR, "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "xgb_model_y2.json")
+#FEATURES_PATH = os.path.join(SCRIPT_DIR, "features2.pkl")
+
+# --- 路徑設定 (在 Y2/inference.py 內部) ---
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) # SCRIPT_DIR 會是 /專案根目錄/Y2
+# FEATURES_PATH = /專案根目錄/Y2/features2.pkl
 FEATURES_PATH = os.path.join(SCRIPT_DIR, "features2.pkl")
 
 # --- Y3 計算函式 ---
