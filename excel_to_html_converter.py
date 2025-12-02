@@ -29,15 +29,15 @@ def load_excel_data(excel_file):
         print(f"載入 Excel 文件時發生錯誤: {e}")
         return None, None
 
-def truncate_history(history_df, keep_last_n=300):
-    """截斷歷史數據，保留最新的 N 筆記錄"""
-    if len(history_df) <= keep_last_n:
-        print(f"數據筆數 ({len(history_df)}) 少於或等於 {keep_last_n}，保留全部數據")
+def truncate_history(history_df, skip_oldest_n=300):
+    """截斷歷史數據，跳過最舊的 N 筆記錄，保留其餘所有數據"""
+    if len(history_df) <= skip_oldest_n:
+        print(f"數據筆數 ({len(history_df)}) 少於或等於 {skip_oldest_n}，無法跳過最舊的數據")
         return history_df
     
-    # 保留最新的 N 筆記錄
-    truncated_df = history_df.tail(keep_last_n).copy()
-    print(f"截斷後保留最新 {len(truncated_df)} 筆記錄")
+    # 跳過最舊的 N 筆記錄，保留剩餘的所有數據
+    truncated_df = history_df.iloc[skip_oldest_n:].copy()
+    print(f"跳過最舊的 {skip_oldest_n} 筆記錄，保留 {len(truncated_df)} 筆記錄")
     
     return truncated_df
 
@@ -213,7 +213,7 @@ def generate_html_report(metrics_df, history_df, output_file="usage_report_trunc
         <div class="timestamp">生成時間: {timestamp}</div>
         
         <div class="info">
-            <strong>注意:</strong> 此報告已截斷，僅顯示最新的 {len(history_df)} 筆記錄
+            <strong>注意:</strong> 此報告已截斷，跳過最舊的 300 筆記錄，顯示 {len(history_df)} 筆記錄
         </div>
 """
 
@@ -265,7 +265,7 @@ def generate_html_report(metrics_df, history_df, output_file="usage_report_trunc
 
     # 添加詳細歷史記錄表格
     html_content += f"""
-        <h2>詳細歷史紀錄 (最新 {len(history_df)} 筆)</h2>
+        <h2>詳細歷史紀錄 ({len(history_df)} 筆，跳過最舊 300 筆)</h2>
         <table class="history-table">
             <thead>
                 <tr>
@@ -319,12 +319,12 @@ def main():
     """主函數"""
     excel_file = "y1_report_all_tables.xlsx"
     output_file = "usage_report_truncated.html"
-    keep_last_n = 300
+    skip_oldest_n = 300
     
     print("=== Excel 轉 HTML 轉換器 (截斷版本) ===")
     print(f"輸入檔案: {excel_file}")
     print(f"輸出檔案: {output_file}")
-    print(f"保留最新: {keep_last_n} 筆記錄")
+    print(f"跳過最舊: {skip_oldest_n} 筆記錄")
     print()
     
     # 檢查輸入檔案是否存在
@@ -338,7 +338,7 @@ def main():
         return
     
     # 截斷歷史數據
-    truncated_history = truncate_history(history_df, keep_last_n)
+    truncated_history = truncate_history(history_df, skip_oldest_n)
     
     # 生成 HTML 報告
     generate_html_report(metrics_df, truncated_history, output_file)
