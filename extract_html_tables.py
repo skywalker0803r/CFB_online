@@ -218,8 +218,8 @@ def main():
     print("=== HTML表格提取工具 ===")
     
     # 設定輸入和輸出文件
-    html_file = "usage_report.html"
-    excel_file = "y1_report_all_tables.xlsx"
+    html_file = "usage_report_y2.html"
+    excel_file = "y2_report_all_tables.xlsx"
     
     # 提取表格
     print("\n1. 提取HTML表格...")
