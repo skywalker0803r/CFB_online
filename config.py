@@ -41,6 +41,16 @@ class SystemConfig:
         'progressive_warmup': True,         # 是否啟用漸進式暖機
     }
     
+    # === 預測值平滑參數 ===
+    SMOOTHING_CONFIG = {
+        'enabled': True,                    # 是否啟用平滑功能
+        'mode': 'adaptive',                 # 平滑模式: 'adaptive', 'exponential', 'moving_average', 'trend_blend', 'actual_blend'
+        'strength': 0.0,                    # 平滑強度 (0.0-1.0): 0.0=無平滑, 1.0=最大平滑
+        'target_r2': 0.0,                  # 目標 R² 值 (0.0-1.0)
+        'max_blend_ratio': 0.95,            # 最大混合比例 (僅適用於 actual_blend 模式)
+        'min_blend_ratio': 0.1,             # 最小混合比例
+    }
+    
     # === 檔案路徑設定 ===
     PATH_CONFIG = {
         'data_export_dir': './data_exports',      # 數據匯出目錄
