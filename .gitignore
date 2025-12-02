@@ -42,3 +42,6 @@ venv.bak/
 .vscode/
 .idea/
 *.swp
+*.xlsx
+*.xls
+*.html
