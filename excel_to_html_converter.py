@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
 def load_excel_data(excel_file):
     """從 Excel 文件載入數據"""
@@ -38,11 +41,82 @@ def truncate_history(history_df, keep_last_n=300):
     
     return truncated_df
 
+def generate_charts(history_df):
+    """生成圖表並返回 base64 編碼的圖片"""
+    
+    # 設置 matplotlib 中文字體
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Arial Unicode MS']
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    # 圖表 1: 實際值 vs 預測值
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
+    
+    # 只繪製有數據的點
+    actual_data = history_df.dropna(subset=['actual_target'])
+    pred_data = history_df.dropna(subset=['prediction'])
+    
+    if not actual_data.empty:
+        ax1.plot(actual_data['step'], actual_data['actual_target'], 
+                label='Actual Values', marker='o', linestyle='-', alpha=0.7)
+    
+    if not pred_data.empty:
+        ax1.plot(pred_data['step'], pred_data['prediction'], 
+                label='Predicted Values', marker='x', linestyle='--', alpha=0.7)
+    
+    ax1.set_title('Online Learning: Actual vs. Predicted Values')
+    ax1.set_xlabel('Time Step')
+    ax1.set_ylabel('DeSOx_1st')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    buf1 = BytesIO()
+    fig1.savefig(buf1, format='png', dpi=100, bbox_inches='tight')
+    image_base64_1 = base64.b64encode(buf1.getvalue()).decode('utf-8')
+    buf1.close()
+    plt.close(fig1)
+    
+    # 圖表 2: 預測誤差 vs 重建門檻
+    fig2, ax2 = plt.subplots(figsize=(12, 6))
+    
+    error_data = history_df.dropna(subset=['error'])
+    threshold_data = history_df.dropna(subset=['threshold'])
+    
+    if not error_data.empty:
+        ax2.plot(error_data['step'], error_data['error'], 
+                label='Prediction Error', marker='o', linestyle='-', alpha=0.7)
+    
+    if not threshold_data.empty:
+        ax2.plot(threshold_data['step'], threshold_data['threshold'], 
+                label='Rebuild Threshold', color='red', linestyle='--', alpha=0.7)
+    
+    ax2.set_title('Prediction Error vs. Rebuild Threshold')
+    ax2.set_xlabel('Time Step')
+    ax2.set_ylabel('Absolute Error')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    buf2 = BytesIO()
+    fig2.savefig(buf2, format='png', dpi=100, bbox_inches='tight')
+    image_base64_2 = base64.b64encode(buf2.getvalue()).decode('utf-8')
+    buf2.close()
+    plt.close(fig2)
+    
+    return image_base64_1, image_base64_2
+
 def generate_html_report(metrics_df, history_df, output_file="usage_report_truncated.html"):
     """生成 HTML 報告"""
     
     # 生成當前時間戳
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 生成圖表
+    print("正在生成圖表...")
+    image_base64_1, image_base64_2 = generate_charts(history_df)
+    
+    # 計算總結信息
+    total_rebuilds = history_df['rebuild_triggered'].sum() if 'rebuild_triggered' in history_df.columns else 0
+    summary_text = f"在 {len(history_df)} 個模擬步驟中，總共觸發了 {total_rebuilds} 次模型重建。"
     
     html_content = f"""
 <!DOCTYPE html>
@@ -119,6 +193,18 @@ def generate_html_report(metrics_df, history_df, output_file="usage_report_trunc
             border-radius: 4px;
             margin: 10px 0;
         }}
+        .summary {{
+            background-color: #eef;
+            padding: 15px;
+            border-left: 5px solid #66f;
+            margin-top: 20px;
+        }}
+        img {{
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }}
     </style>
 </head>
 <body>
@@ -164,7 +250,18 @@ def generate_html_report(metrics_df, history_df, output_file="usage_report_trunc
     html_content += """
             </tbody>
         </table>
-"""
+
+        <h2>運行總結</h2>
+        <div class="summary">
+            <p>{}</p>
+        </div>
+
+        <h2>實際值 vs. 預測值</h2>
+        <img src="data:image/png;base64,{}" alt="Actual vs. Predicted Plot">
+
+        <h2>預測誤差 vs. 重建門檻</h2>
+        <img src="data:image/png;base64,{}" alt="Error vs. Threshold Plot">
+""".format(summary_text, image_base64_1, image_base64_2)
 
     # 添加詳細歷史記錄表格
     html_content += f"""
