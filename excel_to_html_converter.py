@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""
+將 Excel 文件轉換回 HTML 報告，並截斷300筆以前的數據
+"""
+
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import os
+
+def load_excel_data(excel_file):
+    """從 Excel 文件載入數據"""
+    try:
+        # 讀取評估指標
+        metrics_df = pd.read_excel(excel_file, sheet_name='線上模型評估指標')
+        
+        # 讀取歷史記錄
+        history_df = pd.read_excel(excel_file, sheet_name='詳細歷史紀錄')
+        
+        print(f"載入評估指標: {len(metrics_df)} 行")
+        print(f"載入歷史記錄: {len(history_df)} 行")
+        
+        return metrics_df, history_df
+        
+    except Exception as e:
+        print(f"載入 Excel 文件時發生錯誤: {e}")
+        return None, None
+
+def truncate_history(history_df, keep_last_n=300):
+    """截斷歷史數據，保留最新的 N 筆記錄"""
+    if len(history_df) <= keep_last_n:
+        print(f"數據筆數 ({len(history_df)}) 少於或等於 {keep_last_n}，保留全部數據")
+        return history_df
+    
+    # 保留最新的 N 筆記錄
+    truncated_df = history_df.tail(keep_last_n).copy()
+    print(f"截斷後保留最新 {len(truncated_df)} 筆記錄")
+    
+    return truncated_df
+
+def generate_html_report(metrics_df, history_df, output_file="usage_report_truncated.html"):
+    """生成 HTML 報告"""
+    
+    # 生成當前時間戳
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線上學習系統使用報告 (截斷版本)</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        h1, h2 {{
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }}
+        .timestamp {{
+            color: #666;
+            font-style: italic;
+            margin-bottom: 20px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }}
+        th {{
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        tr:hover {{
+            background-color: #f5f5f5;
+        }}
+        .metrics-table th {{
+            background-color: #2196F3;
+        }}
+        .history-table th {{
+            background-color: #FF9800;
+        }}
+        .warning {{
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }}
+        .info {{
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>線上學習系統使用報告 (截斷版本)</h1>
+        <div class="timestamp">生成時間: {timestamp}</div>
+        
+        <div class="info">
+            <strong>注意:</strong> 此報告已截斷，僅顯示最新的 {len(history_df)} 筆記錄
+        </div>
+"""
+
+    # 添加評估指標表格
+    html_content += """
+        <h2>線上模型評估指標</h2>
+        <table class="metrics-table">
+            <thead>
+                <tr>
+                    <th>指標</th>
+                    <th>數值</th>
+                    <th>單位</th>
+                </tr>
+            </thead>
+            <tbody>
+"""
+    
+    for _, row in metrics_df.iterrows():
+        unit = row['Unit'] if pd.notna(row['Unit']) else ""
+        value = row['Value']
+        if isinstance(value, (int, float)):
+            formatted_value = f"{value:.6f}"
+        else:
+            formatted_value = str(value)
+        
+        html_content += f"""
+                <tr>
+                    <td>{row['Metric']}</td>
+                    <td>{formatted_value}</td>
+                    <td>{unit}</td>
+                </tr>
+"""
+    
+    html_content += """
+            </tbody>
+        </table>
+"""
+
+    # 添加詳細歷史記錄表格
+    html_content += f"""
+        <h2>詳細歷史紀錄 (最新 {len(history_df)} 筆)</h2>
+        <table class="history-table">
+            <thead>
+                <tr>
+"""
+    
+    # 添加表格標題
+    for col in history_df.columns:
+        html_content += f"                    <th>{col}</th>\n"
+    
+    html_content += """
+                </tr>
+            </thead>
+            <tbody>
+"""
+    
+    # 添加歷史記錄數據
+    for _, row in history_df.iterrows():
+        html_content += "                <tr>\n"
+        for col in history_df.columns:
+            value = row[col]
+            if pd.isna(value):
+                formatted_value = "N/A"
+            elif isinstance(value, (int, float)):
+                if col == 'step':
+                    formatted_value = str(int(value))
+                else:
+                    formatted_value = f"{value:.6f}"
+            elif isinstance(value, bool):
+                formatted_value = "是" if value else "否"
+            else:
+                formatted_value = str(value)
+            
+            html_content += f"                    <td>{formatted_value}</td>\n"
+        html_content += "                </tr>\n"
+    
+    html_content += """
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+"""
+    
+    # 寫入檔案
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"HTML 報告已生成: {output_file}")
+
+def main():
+    """主函數"""
+    excel_file = "y1_report_all_tables.xlsx"
+    output_file = "usage_report_truncated.html"
+    keep_last_n = 300
+    
+    print("=== Excel 轉 HTML 轉換器 (截斷版本) ===")
+    print(f"輸入檔案: {excel_file}")
+    print(f"輸出檔案: {output_file}")
+    print(f"保留最新: {keep_last_n} 筆記錄")
+    print()
+    
+    # 檢查輸入檔案是否存在
+    if not os.path.exists(excel_file):
+        print(f"錯誤: 找不到檔案 {excel_file}")
+        return
+    
+    # 載入數據
+    metrics_df, history_df = load_excel_data(excel_file)
+    if metrics_df is None or history_df is None:
+        return
+    
+    # 截斷歷史數據
+    truncated_history = truncate_history(history_df, keep_last_n)
+    
+    # 生成 HTML 報告
+    generate_html_report(metrics_df, truncated_history, output_file)
+    
+    print("\n=== 轉換完成 ===")
+
+if __name__ == "__main__":
+    main()
