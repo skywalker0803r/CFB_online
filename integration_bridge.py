@@ -306,11 +306,17 @@ class CFBIntegrationBridge:
                 y1_pred = self.predictor_y1.predict_and_learn(current_data, last_true_y1)
                 results['Y1_prediction'] = y1_pred
                 results['Y1_true'] = current_data.get('DeSOx_1st', pd.Series([None])).iloc[-1] if not current_data.empty else None
+                # 取得 XGBoost 特徵重要度
+                try:
+                    results['Y1_feature_importance'] = self.predictor_y1.get_feature_importance(importance_type='gain')
+                except Exception:
+                    results['Y1_feature_importance'] = {}
                 print(f"🎯 Y1 預測結果: {y1_pred:.4f}" if y1_pred else "⏳ Y1 模型尚未就緒")
             except Exception as e:
                 print(f"❌ Y1 預測失敗: {e}")
                 results['Y1_prediction'] = None
                 results['Y1_true'] = None
+                results['Y1_feature_importance'] = {}
         
         # Y2 預測 (DeSOx_2nd) - 僅 CFB2
         if self.predictor_y2 and self.cfb_unit == 2:
@@ -319,6 +325,11 @@ class CFBIntegrationBridge:
                 results['Y2_prediction'] = y2_pred_dict['DeSOx_2nd_pred']
                 results['Y3_prediction'] = y2_pred_dict['Y3_pred']
                 results['Y2_true'] = current_data.get('DeSOx_2nd', pd.Series([None])).iloc[-1] if not current_data.empty else None
+                # 取得 XGBoost 特徵重要度 (Y2)
+                try:
+                    results['Y2_feature_importance'] = self.predictor_y2.get_feature_importance(importance_type='gain')
+                except Exception:
+                    results['Y2_feature_importance'] = {}
                 print(f"🎯 Y2 預測結果: {y2_pred_dict['DeSOx_2nd_pred']:.4f}" if y2_pred_dict['DeSOx_2nd_pred'] else "⏳ Y2 模型尚未就緒")
                 print(f"🎯 Y3 反推結果: {y2_pred_dict['Y3_pred']:.4f}" if y2_pred_dict['Y3_pred'] else "⏳ Y3 計算尚未就緒")
             except Exception as e:
@@ -326,6 +337,7 @@ class CFBIntegrationBridge:
                 results['Y2_prediction'] = None
                 results['Y3_prediction'] = None
                 results['Y2_true'] = None
+                results['Y2_feature_importance'] = {}
         
         # 記錄完整的預測歷史（包含特徵、預測值、真實值）
         prediction_record = {

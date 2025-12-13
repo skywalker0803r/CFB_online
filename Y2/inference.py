@@ -76,6 +76,36 @@ class OnlinePredictor:
         self.kf = KalmanFilter(transition_matrices=1.0, observation_matrices=1.0, transition_covariance=0.3, observation_covariance=1.0)
         self.kf_mean, self.kf_cov = np.array([[0.85]]), np.array([[1.0]])
 
+    def get_feature_importance(self, importance_type: str = 'gain') -> dict:
+        """回傳目前模型的特徵重要度 (以欄位名稱對應)。
+        當模型尚未訓練時回傳空字典。
+        importance_type 可為 'gain' | 'weight' | 'cover' | 'total_gain' | 'total_cover'.
+        """
+        if self.model is None:
+            return {}
+        try:
+            booster = self.model.get_booster()
+            raw_scores = booster.get_score(importance_type=importance_type)
+            mapped = {}
+            for k, v in raw_scores.items():
+                if k.startswith('f') and k[1:].isdigit():
+                    idx = int(k[1:])
+                    if 0 <= idx < len(self.feature_cols):
+                        mapped[self.feature_cols[idx]] = float(v)
+                    else:
+                        mapped[k] = float(v)
+                else:
+                    mapped[k] = float(v)
+            return dict(sorted(mapped.items(), key=lambda x: x[1], reverse=True))
+        except Exception:
+            try:
+                importances = getattr(self.model, 'feature_importances_', None)
+                if importances is None:
+                    return {}
+                return dict(sorted({feat: float(imp) for feat, imp in zip(self.feature_cols, importances)}.items(), key=lambda x: x[1], reverse=True))
+            except Exception:
+                return {}
+
     def predict_and_learn(self, current_features_df, last_true_target=None):
         self.step_counter += 1
         log_entry = {'step': self.step_counter, 'rebuild_triggered': False, 'last_true_target': last_true_target}

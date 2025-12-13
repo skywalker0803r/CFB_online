@@ -88,6 +88,39 @@ class OnlinePredictor:
         self.kf_mean = np.array([[0.85]])
         self.kf_cov = np.array([[1.0]])
 
+    def get_feature_importance(self, importance_type: str = 'gain') -> dict:
+        """回傳目前模型的特徵重要度 (以欄位名稱對應)。
+        當模型尚未訓練時回傳空字典。
+        importance_type 可為 'gain' | 'weight' | 'cover' | 'total_gain' | 'total_cover'.
+        """
+        if self.model is None:
+            return {}
+        try:
+            booster = self.model.get_booster()
+            raw_scores = booster.get_score(importance_type=importance_type)
+            # 嘗試將 f0/f1... 映射回欄位名稱
+            mapped = {}
+            for k, v in raw_scores.items():
+                if k.startswith('f') and k[1:].isdigit():
+                    idx = int(k[1:])
+                    if 0 <= idx < len(self.feature_cols):
+                        mapped[self.feature_cols[idx]] = float(v)
+                    else:
+                        mapped[k] = float(v)
+                else:
+                    mapped[k] = float(v)
+            # 排序後回傳
+            return dict(sorted(mapped.items(), key=lambda x: x[1], reverse=True))
+        except Exception:
+            # 後備：嘗試使用 sklearn wrapper 的屬性
+            try:
+                importances = getattr(self.model, 'feature_importances_', None)
+                if importances is None:
+                    return {}
+                return dict(sorted({feat: float(imp) for feat, imp in zip(self.feature_cols, importances)}.items(), key=lambda x: x[1], reverse=True))
+            except Exception:
+                return {}
+
     def predict_and_learn(self, current_features_df, last_true_target=None):
         # ... (predict_and_learn logic as before) ...
         self.step_counter += 1
